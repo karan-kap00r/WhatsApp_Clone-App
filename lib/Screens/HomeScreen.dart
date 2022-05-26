@@ -1,11 +1,12 @@
 import 'package:chat_app/Model/ChatModel.dart';
+import 'package:chat_app/NewScreen/CallScreen.dart';
 import 'package:chat_app/Pages/CameraPage.dart';
 import 'package:chat_app/Pages/ChatPage.dart';
 import 'package:chat_app/Pages/StatusPage.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key, required this.chatmodels, required this.sourchat}) : super(key: key);
+  const HomeScreen({Key? key, required this.chatmodels, required this.sourchat,}) : super(key: key);
   final List<ChatModel> chatmodels;
   final ChatModel sourchat;
 
@@ -79,13 +80,14 @@ class _HomeScreenState extends State<HomeScreen>
       body: TabBarView(
         controller: _controller,
         children: [
-          CameraPage(),
+          // CameraPage(),
+          Center(child: Text("GoTo ChatPage & select a contact to share images!")),
           ChatPage(
             chatmodels: widget.chatmodels,
             sourchat: widget.sourchat,
           ),
           StatusPage(),
-          Center(child: Text("CALLS")),
+          CallScreen(),
         ],
       ),
     );

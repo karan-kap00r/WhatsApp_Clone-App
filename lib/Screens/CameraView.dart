@@ -3,8 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 class CameraViewPage extends StatelessWidget {
-  const CameraViewPage({Key? key, required this.path}) : super(key: key);
+  const CameraViewPage({Key? key, required this.path, required this.onImageSend}) : super(key: key);
   final String path;
+  final Function onImageSend;
+  static TextEditingController _controller=TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +61,7 @@ class CameraViewPage extends StatelessWidget {
                 width: MediaQuery.of(context).size.width,
                 padding: EdgeInsets.symmetric(vertical: 5, horizontal: 8),
                 child: TextFormField(
+                  controller: _controller,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 17,
@@ -77,13 +80,18 @@ class CameraViewPage extends StatelessWidget {
                         color: Colors.white,
                         fontSize: 17,
                       ),
-                      suffixIcon: CircleAvatar(
-                        radius: 27,
-                        backgroundColor: Colors.tealAccent[700],
-                        child: Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 27,
+                      suffixIcon: InkWell(
+                        onTap: (){
+                          onImageSend(path,_controller.text.trim());
+                        },
+                        child: CircleAvatar(
+                          radius: 27,
+                          backgroundColor: Colors.tealAccent[700],
+                          child: Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 27,
+                          ),
                         ),
                       )),
                 ),

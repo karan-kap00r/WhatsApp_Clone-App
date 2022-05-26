@@ -1,13 +1,22 @@
+import 'dart:convert';
+
+import 'package:chat_app/CustomUI/OwnFileCard.dart';
 import 'package:chat_app/CustomUI/OwnMessageCard.dart';
 import 'package:chat_app/CustomUI/ReplyCard.dart';
+import 'package:chat_app/CustomUI/ReplyFileCard.dart';
 import 'package:chat_app/Model/ChatModel.dart';
 import 'package:chat_app/Model/MessageModel.dart';
+import 'package:chat_app/Screens/CameraScreen.dart';
+import 'package:chat_app/Screens/CameraView.dart';
 import 'package:emoji_picker_2/emoji_picker_2.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:socket_io_client/socket_io_client.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+int popTime=0;
 
 class IndividualPage extends StatefulWidget {
   IndividualPage({Key? key, required this.chatModel, required this.sourchat}) : super(key: key);
@@ -27,6 +36,8 @@ class _IndividualPageState extends State<IndividualPage> {
   List<MessageModel> messages = [];
   ScrollController _scrollController = ScrollController();
   late final IO.Socket _socket;
+  ImagePicker _picker = ImagePicker();
+  late XFile file;
 
   @override
   void initState() {
@@ -57,6 +68,7 @@ class _IndividualPageState extends State<IndividualPage> {
   Future<void> connect() async {
     _socket = await IO.io(
         'http://192.168.43.244:5000',
+        // "https://calm-plains-89117.herokuapp.com/",     //heroku server portal
         IO.OptionBuilder()
             .setTransports(['websocket']) // for Flutter or Dart VM
         // .setExtraHeaders({'foo': 'bar'}) // optional
@@ -69,24 +81,24 @@ class _IndividualPageState extends State<IndividualPage> {
     _socket.on('message', (data) {
       print(data);
 
-      setMessage("destination", data["message"]);
+      setMessage("destination", data["message"],data["path"]);
       _scrollController.animateTo(_scrollController.position.maxScrollExtent,
           duration: Duration(milliseconds: 300), curve: Curves.easeOut);
     });
     print(_socket.connected);
   }
 
-  void sendMessage(String message, int sourceId, int targetId) {
-    setMessage("source", message);
+  void sendMessage(String message, int sourceId, int targetId,String path) {
+    setMessage("source", message,path);
     socket.emit("message",
-        {"message": message, "sourceId": sourceId, "targetId": targetId});
+        {"message": message, "sourceId": sourceId, "targetId": targetId,"path":path});
   }
 
-  void setMessage(String type, String message) {
+  void setMessage(String type, String message,String path) {
     MessageModel messageModel = MessageModel(
         type: type,
         message: message,
-        time: DateTime.now().toString().substring(10, 16));
+        time: DateTime.now().toString().substring(10, 16), path: path);
     print(messages);
 
     setState(() {
@@ -94,6 +106,29 @@ class _IndividualPageState extends State<IndividualPage> {
     });
   }
 
+  Future<void> onImageSend(String path,String message)
+  async {
+    for(int i=0;i<popTime;i++)
+      {
+        Navigator.pop(context);
+      }
+    setState(() {
+      popTime=0;
+    });
+    var request=http.MultipartRequest('POST',Uri.parse("http://192.168.43.244:5000/routes/addImage"));
+    request.files.add(await http.MultipartFile.fromPath("img", path));
+    request.headers.addAll({
+      "Content-type": "multipart/form-data",
+    });
+    http.StreamedResponse response = await request.send();
+    var httpResponse = await http.Response.fromStream(response);
+    var data=jsonDecode(httpResponse.body);
+    print(data['path']);
+    print(response.statusCode);
+    setMessage("source", message,path);
+    socket.emit("message",
+        {"message": message, "sourceId": widget.sourchat.id, "targetId": widget.chatModel.id,"path":data['path']});
+  }
 
   Widget build(BuildContext context) {
     return Stack(
@@ -211,11 +246,18 @@ class _IndividualPageState extends State<IndividualPage> {
                                 );
                               }
                               if (messages[index].type == "source") {
-                                return OwnMessageCard(
-                                  message: messages[index].message,
-                                  time: messages[index].time,
-                                );
+                               if(messages[index].path.length>0)
+                                  return OwnFileCard(path: messages[index].path, message: messages[index].message, time: messages[index].time,);
+                               else
+                                 {
+                                   return OwnMessageCard(
+                                     message: messages[index].message,
+                                     time: messages[index].time,
+                                   );
+                                 }
                               } else {
+                                if(messages[index].path.length>0)
+                                  return ReplyFileCard(path: messages[index].path, message: messages[index].message, time: messages[index].time,);
                                 return ReplyCard(
                                   message: messages[index].message,
                                   time: messages[index].time,
@@ -287,12 +329,10 @@ class _IndividualPageState extends State<IndividualPage> {
                                               IconButton(
                                                 icon: Icon(Icons.camera_alt,color: Colors.grey[600],),
                                                 onPressed: () {
-                                                  // Navigator.push(
-                                                  //     context,
-                                                  //     MaterialPageRoute(
-                                                  //         builder: (builder) =>
-                                                  //             CameraApp()));
-                                                },
+                                                  setState(() {
+                                                    popTime=2;
+                                                  });
+                                                  Navigator.push(context, MaterialPageRoute(builder: (builder)=>CameraScreen(onImageSend: onImageSend)));                                                },
                                               ),
                                             ],
                                           ),
@@ -322,7 +362,7 @@ class _IndividualPageState extends State<IndividualPage> {
                                             sendMessage(
                                                 _controller.text,
                                                 widget.sourchat.id,
-                                                widget.chatModel.id);
+                                                widget.chatModel.id,"",);
                                             _controller.clear();
                                             setState(() {
                                               sendButton = false;
@@ -371,15 +411,26 @@ class _IndividualPageState extends State<IndividualPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   iconCreation(
-                      Icons.insert_drive_file, Colors.indigo, "Document"),
+                      Icons.insert_drive_file, Colors.indigo, "Document",(){}),
                   SizedBox(
                     width: 40,
                   ),
-                  iconCreation(Icons.camera_alt, Colors.pink, "Camera"),
+                  iconCreation(Icons.camera_alt, Colors.pink, "Camera",(){
+                    setState(() {
+                      popTime=2;
+                    });
+                    Navigator.push(context, MaterialPageRoute(builder: (builder)=>CameraScreen(onImageSend: onImageSend)));
+                  }),
                   SizedBox(
                     width: 40,
                   ),
-                  iconCreation(Icons.insert_photo, Colors.purple, "Gallery"),
+                  iconCreation(Icons.insert_photo, Colors.purple, "Gallery",()async{
+                    setState(() {
+                      popTime=2;
+                    });
+                    file=(await _picker.pickImage(source: ImageSource.gallery))!;
+                    Navigator.push(context, MaterialPageRoute(builder: (builder)=>CameraViewPage(path: file.path,onImageSend: onImageSend,)));
+                  },),
                 ],
               ),
               SizedBox(
@@ -388,15 +439,15 @@ class _IndividualPageState extends State<IndividualPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  iconCreation(Icons.headset, Colors.orange, "Audio"),
+                  iconCreation(Icons.headset, Colors.orange, "Audio",(){}),
                   SizedBox(
                     width: 40,
                   ),
-                  iconCreation(Icons.location_pin, Colors.teal, "Location"),
+                  iconCreation(Icons.location_pin, Colors.teal, "Location",(){}),
                   SizedBox(
                     width: 40,
                   ),
-                  iconCreation(Icons.person, Colors.blue, "Contact"),
+                  iconCreation(Icons.person, Colors.blue, "Contact",(){}),
                 ],
               ),
             ],
@@ -405,9 +456,9 @@ class _IndividualPageState extends State<IndividualPage> {
       ),
     );
   }
-  Widget iconCreation(IconData icons, Color color, String text) {
+  Widget iconCreation(IconData icons, Color color, String text,VoidCallback onTap) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       child: Column(
         children: [
           CircleAvatar(

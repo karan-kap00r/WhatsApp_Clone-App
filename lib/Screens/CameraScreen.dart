@@ -7,7 +7,8 @@ import 'package:flutter/material.dart';
 late List<CameraDescription> cameras;
 
 class CameraScreen extends StatefulWidget {
-  const CameraScreen({Key? key}) : super(key: key);
+  const CameraScreen({Key? key, required this.onImageSend}) : super(key: key);
+  final Function onImageSend;
 
   @override
   State<CameraScreen> createState() => _CameraScreenState();
@@ -155,6 +156,7 @@ class _CameraScreenState extends State<CameraScreen> {
         MaterialPageRoute(
             builder: (builder) => CameraViewPage(
                   path: file.path,
+              onImageSend: widget.onImageSend,
                 )));
   }
 }

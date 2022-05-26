@@ -19,7 +19,7 @@ class _SelectContactState extends State<SelectContact> {
       ChatModel(name: "Virat Kohli", status: "Flutter Developer...........",id: 11),
       ChatModel(name: "Rohit Sharma", status: "Web developer...",id: 12),
       ChatModel(name: "Rituraj", status: "App developer....",id: 13),
-      ChatModel(name: "ABD", status: "Raect developer..",id: 14),
+      ChatModel(name: "ABD", status: "React developer..",id: 14),
       ChatModel(name: "KL Rahul", status: "Full Stack Web",id: 15),
       ChatModel(name: "Mohammad Shami", status: "Example work",id: 16),
       ChatModel(name: "Mayank Agarwal", status: "Sharing is caring",id: 17),
